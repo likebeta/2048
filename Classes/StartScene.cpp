@@ -1,10 +1,7 @@
 #include "StartScene.h"
-#include "cocostudio/CocoStudio.h"
-#include "ui/CocosGUI.h"
+#include "Block.h"
 
 USING_NS_CC;
-
-using namespace cocostudio::timeline;
 
 Scene* StartScene::createScene()
 {
@@ -30,10 +27,10 @@ bool StartScene::init()
     {
         return false;
     }
-    
-    auto rootNode = CSLoader::createNode("MainScene.csb");
 
-    addChild(rootNode);
+	auto b = Block::create(2, 200, 200);
+	b->setPosition(500, 500);
+	addChild(b);
 
     return true;
 }
