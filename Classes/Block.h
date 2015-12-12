@@ -15,5 +15,6 @@ public:
 	void setValue(int value);
 	int getValue();
 	bool initWithValue(int value, int width, int height);
+	Block* clone();
 };
 

@@ -3,7 +3,7 @@
 
 #include "cocos2d.h"
 
-class StartScene : public cocos2d::Layer
+class StartScene : public cocos2d::LayerColor
 {
 public:
     // there's no 'id' in cpp, so we recommend returning the class instance pointer
@@ -14,6 +14,15 @@ public:
 
     // implement the "static create()" method manually
     CREATE_FUNC(StartScene);
+private:
+	void HandleKeyPressed(cocos2d::EventKeyboard::KeyCode keyCode, cocos2d::Event* event);
+	bool MoveLeft();
+	bool MoveRight();
+	bool MoveUp();
+	bool MoveDown();
+private:
+	const int BLOCK_NUMBER = 4;
+	const int BLOCK_GAP = 10;
 };
 
 #endif // __HELLOWORLD_SCENE_H__
