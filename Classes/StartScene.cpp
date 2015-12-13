@@ -80,10 +80,10 @@ void StartScene::HandleKeyPressed(EventKeyboard::KeyCode keyCode, Event* event)
 	bool is_win = false;
 	for (auto it : blocks)
 	{
-		if (it >= 32)
+		if (it >= 2048)
 		{
 			is_win = true;
-			PacToast::makeText(this, "you win", 1.5f);
+			PacToast::toast(this, "you win", 1.0f);
 			break;
 		}
 	}
@@ -98,18 +98,18 @@ void StartScene::HandleKeyPressed(EventKeyboard::KeyCode keyCode, Event* event)
 			{
 				if (!is_win)
 				{
-					PacToast::makeText(this, "you lose", 1.5f);
+					PacToast::toast(this, "you lose", 1.0f);
 				}
 			}
 		}
 		else
 		{
-			PacToast::makeText(this, "something error", 1.5f);
+			PacToast::toast(this, "something error", 1.0f);
 		}
 	}
 	else if (free_blocks.empty() && !is_win)
 	{
-		PacToast::makeText(this, "you lose", 1.5f);
+		PacToast::toast(this, "you lose", 1.0f);
 	}
 }
 
