@@ -3,6 +3,8 @@
 
 #include "cocos2d.h"
 
+class Block;
+
 class StartScene : public cocos2d::LayerColor
 {
 public:
@@ -20,9 +22,19 @@ private:
 	bool MoveRight();
 	bool MoveUp();
 	bool MoveDown();
+	bool MoveLeft(std::vector<int>& blocks);
+	bool MoveRight(std::vector<int>& blocks);
+	bool MoveUp(std::vector<int>& blocks);
+	bool MoveDown(std::vector<int>& blocks);
+	int GetFreeBlock();
+	void AddFreeBlock(int tag);
+	bool InitBlocks();
+	Block* RandomNewBlock();
+	bool CombineBlocks(Block* b1, Block* b2);
 private:
 	const int BLOCK_NUMBER = 4;
 	const int BLOCK_GAP = 10;
+	std::set<int> free_blocks;
 };
 
 #endif // __HELLOWORLD_SCENE_H__
