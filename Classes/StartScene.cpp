@@ -109,7 +109,10 @@ void StartScene::HandleKeyPressed(EventKeyboard::KeyCode keyCode, Event* event)
 	}
 	else if (free_blocks.empty() && !is_win)
 	{
-		PacToast::toast(this, "you lose", 1.0f);
+		if (!MoveLeft(blocks) && !MoveRight(blocks) && !MoveDown(blocks) && !MoveDown(blocks))
+		{
+			PacToast::toast(this, "you lose", 1.0f);
+		}
 	}
 }
 
