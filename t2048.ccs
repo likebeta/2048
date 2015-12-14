@@ -1,5 +1,5 @@
 <Solution>
-  <PropertyGroup Name="2048" Version="2.1.0.0" Type="CocosStudio" />
+  <PropertyGroup Name="t2048" Version="2.1.0.0" Type="CocosStudio" />
   <SolutionFolder>
     <Group ctype="ResourceGroup">
       <RootFolder Name=".">
