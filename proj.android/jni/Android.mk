@@ -13,6 +13,8 @@ LOCAL_MODULE_FILENAME := libcocos2dcpp
 LOCAL_SRC_FILES := hellocpp/main.cpp \
                    ../../Classes/AppDelegate.cpp \
                    ../../Classes/Block.cpp \
+                   ../../Classes/BlockManager.cpp \
+                   ../../Classes/InfoWrap.cpp \
                    ../../Classes/StartScene.cpp \
                    ../../Classes/Toast.cpp \
                    ../../Classes/Tools.cpp
