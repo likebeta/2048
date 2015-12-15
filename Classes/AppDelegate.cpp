@@ -25,16 +25,16 @@ void AppDelegate::initGLContextAttrs()
 bool AppDelegate::applicationDidFinishLaunching() {
     // initialize director
     auto director = Director::getInstance();
-    auto glview = director->getOpenGLView();
-    if(!glview) {
-        glview = GLViewImpl::createWithRect("2048", Rect(0, 0, 640, 640));
+    if(!director->getOpenGLView()) {
+        auto glview = GLViewImpl::createWithRect("2048", Rect(0, 0, 640, 960));
         director->setOpenGLView(glview);
     }
 
-    director->getOpenGLView()->setDesignResolutionSize(640, 640, ResolutionPolicy::SHOW_ALL);
+	auto sz = director->getOpenGLView()->getVisibleSize();
+    director->getOpenGLView()->setDesignResolutionSize(sz.width, sz.height, ResolutionPolicy::SHOW_ALL);
 
     // turn on display FPS
-    director->setDisplayStats(true);
+    director->setDisplayStats(false);
 
     // set FPS. the default value is 1.0/60 if you don't call this
     director->setAnimationInterval(float(1.0 / 60));

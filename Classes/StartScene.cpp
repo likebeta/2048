@@ -6,6 +6,11 @@
 
 USING_NS_CC;
 
+StartScene::StartScene()
+{
+	is_animation = false;
+}
+
 Scene* StartScene::createScene()
 {
     // 'scene' is an autorelease object
@@ -26,47 +31,61 @@ bool StartScene::init()
 {
     //////////////////////////////
     // 1. super init first
-    if ( !LayerColor::initWithColor(Color4B(0xBB, 0xAA, 0xA0, 0xFF)) )
+    if ( !LayerColor::initWithColor(Color4B(187, 170, 160, 255)) )
     {
         return false;
     }
 
 	InitBlocks();
 
+	// Ìí¼Ó¼üÅÌ¼àÌýÆ÷
 	auto keyListener = EventListenerKeyboard::create();
 	keyListener->onKeyPressed = CC_CALLBACK_2(StartScene::HandleKeyPressed, this);
-	keyListener->onKeyReleased = [](EventKeyboard::KeyCode keyCode, Event* event) { log("Key %d released.", keyCode); };
-
-	// Ìí¼Ó¼àÌýÆ÷
+	keyListener->onKeyReleased = [](EventKeyboard::KeyCode keyCode, Event* event) { log("Key %d released.", (int)keyCode); };
 	_eventDispatcher->addEventListenerWithSceneGraphPriority(keyListener, this);
 
-    return true;
+	// Ìí¼Ó´¥Ãþ¼àÌýÆ÷
+	auto touchListener = EventListenerTouchOneByOne::create();
+	touchListener->onTouchBegan = [](Touch *touch, Event *unused_event) {
+		Vec2 location = touch->getLocation();
+		log("sprite begin... x = %f, y = %f", location.x, location.y);
+		return true;
+	};
+
+	touchListener->onTouchEnded = CC_CALLBACK_2(StartScene::HandleTouch, this);
+
+	touchListener->onTouchMoved = [](Touch *touch, Event *unused_event) {
+		Vec2 location = touch->getLocation();
+		log("sprite move... x = %f, y = %f", location.x, location.y);
+	};
+
+	touchListener->onTouchCancelled = [](Touch *touch, Event *unused_event) {
+		Vec2 location = touch->getLocation();
+		log("sprite cancel... x = %f, y = %f", location.x, location.y);
+	};
+
+	_eventDispatcher->addEventListenerWithSceneGraphPriority(touchListener, this);
+	return true;
 }
 
-void StartScene::HandleKeyPressed(EventKeyboard::KeyCode keyCode, Event* event)
+void StartScene::HandleProcess(const std::string& direction)
 {
-	log("Key %d pressed.", keyCode);
-
 	bool result = false;
-	if (keyCode == EventKeyboard::KeyCode::KEY_LEFT_ARROW)
+	if (direction == "left")
 	{
 		result = MoveLeft();
 	}
-	else if (keyCode == EventKeyboard::KeyCode::KEY_RIGHT_ARROW)
+	else if (direction == "right")
 	{
 		result = MoveRight();
 	}
-	else if (keyCode == EventKeyboard::KeyCode::KEY_UP_ARROW)
-	{
-		result = MoveUp();
-	}
-	else if (keyCode == EventKeyboard::KeyCode::KEY_DOWN_ARROW)
+	else if (direction == "down")
 	{
 		result = MoveDown();
 	}
-	else
+	else if (direction == "up")
 	{
-		log("usage: left, right, up, down");
+		result = MoveUp();
 	}
 
 	std::vector<int> blocks;
@@ -113,6 +132,78 @@ void StartScene::HandleKeyPressed(EventKeyboard::KeyCode keyCode, Event* event)
 		{
 			PacToast::toast(this, "you lose", 1.0f);
 		}
+	}
+}
+
+void StartScene::HandleTouch(cocos2d::Touch* touch, cocos2d::Event* event)
+{
+	if (is_animation)
+	{
+		log("is_animation ...");
+		return;
+	}
+	Vec2 now_pt = touch->getLocation();
+	Vec2 prev_pt = touch->getStartLocation();
+	log("sprite end... (%f, %f) -> (%f, %f)", prev_pt.x, prev_pt.y, now_pt.x, now_pt.y);
+	auto x_axis = now_pt.x - prev_pt.x;
+	auto y_axis = now_pt.y - prev_pt.y;
+	auto chord = x_axis*x_axis + y_axis*y_axis;
+	auto sz = Director::getInstance()->getVisibleSize();
+	if (chord > std::min(sz.width, sz.height) / 60.0)	// ÒÆ¶¯Ì«Ð¡»áºöÂÔ
+	{
+		if (std::abs(x_axis) >= std::abs(y_axis))
+		{
+			if (x_axis <= 0)	// ×ó
+			{
+				HandleProcess("left");
+			}
+			else
+			{
+				HandleProcess("right");
+			}
+		}
+		else
+		{
+			if (x_axis <= 0)	// ÏÂ
+			{
+				HandleProcess("down");
+			}
+			else
+			{
+				HandleProcess("up");
+			}
+		}
+	}
+}
+
+void StartScene::HandleKeyPressed(EventKeyboard::KeyCode keyCode, Event* event)
+{
+	if (is_animation)
+	{
+		log("is_animation ...");
+		return;
+	}
+	log("Key %d pressed.", (int)keyCode);
+
+	if (keyCode == EventKeyboard::KeyCode::KEY_LEFT_ARROW)
+	{
+		HandleProcess("left");
+	}
+	else if (keyCode == EventKeyboard::KeyCode::KEY_RIGHT_ARROW)
+	{
+		HandleProcess("right");
+	}
+	else if (keyCode == EventKeyboard::KeyCode::KEY_UP_ARROW)
+	{
+		HandleProcess("up");
+	}
+	else if (keyCode == EventKeyboard::KeyCode::KEY_DOWN_ARROW)
+	{
+		HandleProcess("down");
+	}
+	else
+	{
+		log("usage: left, right, up, down");
 	}
 }
 
@@ -689,7 +780,22 @@ Block* StartScene::RandomNewBlock()
 	}
 	int tag = GetFreeBlock();
 	auto b = getChildByTag<Block*>(tag);
-	b->setValue(2);
+	auto tmp = b->clone();
+	addChild(tmp, 99);
+	auto value = (rand() % 100 <= 10) ? 4 : 2;
+	b->setFakeValue(value);
+	tmp->setValue(value);
+	tmp->setTag(100 + tag);
+	tmp->setScale(0.2f);
+	is_animation = true;
+	auto zoom_in = CCScaleTo::create(0.2, 1.0);
+	auto action_callback = CallFuncN::create([this, tmp, b, value](Node* node) {
+		tmp->removeFromParentAndCleanup(true);
+		b->setValue(value);
+		is_animation = false;
+	});
+	auto seq = Sequence::create(zoom_in, action_callback, nullptr);
+	tmp->runAction(seq);
 	return b;
 }
 
@@ -704,4 +810,9 @@ bool StartScene::CombineBlocks(Block* b1, Block* b2)
 	b1->setValue(0);
 	b2->setValue(value1 + value2);
 	return true;
+}
+
+void StartScene::SetAnimation(bool ing)
+{
+	is_animation = ing;
 }

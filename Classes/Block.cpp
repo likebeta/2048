@@ -7,6 +7,7 @@ USING_NS_CC;
 Block::Block(int value)
 {
 	this->value = value;
+	this->fake_value = value;
 	_ignoreAnchorPointForPosition = false;
 }
 
@@ -83,6 +84,7 @@ void Block::setValue(int value)
 	if (value != this->value)
 	{
 		this->value = value;
+		this->fake_value = value;
 		auto bkColor = getBkColorByValue(value);
 		this->setColor(Color3B(bkColor));
 		this->setOpacity(bkColor.a);
@@ -100,9 +102,14 @@ void Block::setValue(int value)
 	}
 }
 
+void Block::setFakeValue(int value)
+{
+	fake_value = value;
+}
+
 int Block::getValue()
 {
-	return value;
+	return fake_value;
 }
 
 bool Block::initWithValue(int value, int width, int height)
@@ -137,5 +144,11 @@ int Block::getFontSizeByValue(int value)
 
 Block* Block::clone()
 {
-	return create(value, _contentSize.width, _contentSize.height);
+	auto b = create(value, _contentSize.width, _contentSize.height);
+	if (b != nullptr)
+	{
+		auto pos = getPosition();
+		b->setPosition(pos);
+	}
+	return b;
 }
