@@ -113,7 +113,8 @@ void StartScene::HandleProcess(const std::string& direction)
 		if (b != nullptr)
 		{
 			// check over
-			if (free_blocks.empty() && !MoveLeft(blocks) && !MoveRight(blocks) && !MoveDown(blocks) && !MoveDown(blocks))
+			blocks[b->getTag()] = b->getValue();
+			if (free_blocks.empty() && !MoveLeft(blocks) && !MoveRight(blocks) && !MoveDown(blocks) && !MoveUp(blocks))
 			{
 				if (!is_win)
 				{
@@ -128,7 +129,7 @@ void StartScene::HandleProcess(const std::string& direction)
 	}
 	else if (free_blocks.empty() && !is_win)
 	{
-		if (!MoveLeft(blocks) && !MoveRight(blocks) && !MoveDown(blocks) && !MoveDown(blocks))
+		if (!MoveLeft(blocks) && !MoveRight(blocks) && !MoveDown(blocks) && !MoveUp(blocks))
 		{
 			PacToast::toast(this, "you lose", 1.0f);
 		}
@@ -147,7 +148,6 @@ void StartScene::HandleTouch(cocos2d::Touch* touch, cocos2d::Event* event)
 	log("sprite end... (%f, %f) -> (%f, %f)", prev_pt.x, prev_pt.y, now_pt.x, now_pt.y);
 	auto x_axis = now_pt.x - prev_pt.x;
 	auto y_axis = now_pt.y - prev_pt.y;
-	auto sz = Director::getInstance()->getVisibleSize();
 	if (std::abs(x_axis) >= std::abs(y_axis))
 	{
 		if (x_axis <= -block_gap)	// ×ó
