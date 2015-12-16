@@ -147,31 +147,27 @@ void StartScene::HandleTouch(cocos2d::Touch* touch, cocos2d::Event* event)
 	log("sprite end... (%f, %f) -> (%f, %f)", prev_pt.x, prev_pt.y, now_pt.x, now_pt.y);
 	auto x_axis = now_pt.x - prev_pt.x;
 	auto y_axis = now_pt.y - prev_pt.y;
-	auto chord = x_axis*x_axis + y_axis*y_axis;
 	auto sz = Director::getInstance()->getVisibleSize();
-	if (chord > std::min(sz.width, sz.height) / 60.0)	// 移动太小会忽略
+	if (std::abs(x_axis) >= std::abs(y_axis))
 	{
-		if (std::abs(x_axis) >= std::abs(y_axis))
+		if (x_axis <= -block_gap)	// 左
 		{
-			if (x_axis <= 0)	// 左
-			{
-				HandleProcess("left");
-			}
-			else
-			{
-				HandleProcess("right");
-			}
+			HandleProcess("left");
 		}
-		else
+		else if (x_axis >= block_gap)
 		{
-			if (x_axis <= 0)	// 下
-			{
-				HandleProcess("down");
-			}
-			else
-			{
-				HandleProcess("up");
-			}
+			HandleProcess("right");
+		}
+	}
+	else
+	{
+		if (y_axis <= -block_gap)	// 下
+		{
+			HandleProcess("down");
+		}
+		else if (y_axis >= block_gap)
+		{
+			HandleProcess("up");
 		}
 	}
 }
@@ -738,13 +734,15 @@ bool StartScene::InitBlocks()
 	auto director = Director::getInstance();
 	auto sz = director->getVisibleSize();
 
-	int square_sz = std::min(sz.width, sz.height);
-	int block_width = (square_sz - BLOCK_GAP*(BLOCK_NUMBER + 1)) / BLOCK_NUMBER;
+	matrix_width = std::min(sz.width, sz.height);
+	block_gap = float(matrix_width) / (15*BLOCK_NUMBER+2);
+	block_width = block_gap * 14;
 
-	int diff_x = 0;
+	float diff_x = block_gap / 2;
+	float diff_y = block_gap / 2;
 	if (sz.width > sz.height)
 	{
-		diff_x = sz.width - sz.height;
+		diff_x += sz.width - sz.height;
 	}
 
 	int block1 = GetFreeBlock();
@@ -752,7 +750,7 @@ bool StartScene::InitBlocks()
 
 	for (int x = 0; x < BLOCK_NUMBER; ++x)
 	{
-		int _x = x * (BLOCK_GAP + block_width) + BLOCK_GAP + block_width / 2 + diff_x;
+		int _x = x * (block_gap + block_width) + block_gap + block_width / 2 + diff_x;
 		for (int y = 0; y < BLOCK_NUMBER; ++y)
 		{
 			int tag = x + BLOCK_NUMBER*y;
@@ -762,7 +760,7 @@ bool StartScene::InitBlocks()
 				value = 2;
 			}
 			auto b = Block::create(value, block_width, block_width);
-			int _y = y * (BLOCK_GAP + block_width) + BLOCK_GAP + block_width / 2;
+			int _y = y * (block_gap + block_width) + block_gap + block_width / 2 + diff_y;
 			b->setPosition(_x, _y);
 			addChild(b, 1, tag);
 			log("tag%d", tag);
@@ -788,7 +786,7 @@ Block* StartScene::RandomNewBlock()
 	tmp->setTag(100 + tag);
 	tmp->setScale(0.2f);
 	is_animation = true;
-	auto zoom_in = CCScaleTo::create(0.2, 1.0);
+	auto zoom_in = CCScaleTo::create(0.2f, 1.0f);
 	auto action_callback = CallFuncN::create([this, tmp, b, value](Node* node) {
 		tmp->removeFromParentAndCleanup(true);
 		b->setValue(value);

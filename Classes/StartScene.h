@@ -37,7 +37,9 @@ private:
 	void SetAnimation(bool ing);
 private:
 	const int BLOCK_NUMBER = 4;
-	const int BLOCK_GAP = 10;
+	float matrix_width;
+	float block_gap;
+	float block_width;
 	std::set<int> free_blocks;
 	bool is_animation;
 };
