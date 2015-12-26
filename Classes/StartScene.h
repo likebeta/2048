@@ -20,28 +20,8 @@ public:
 private:
 	void HandleTouch(cocos2d::Touch* touch, cocos2d::Event* event);
 	void HandleKeyPressed(cocos2d::EventKeyboard::KeyCode keyCode, cocos2d::Event* event);
-	void HandleProcess(const std::string& direction);
-	bool MoveLeft();
-	bool MoveRight();
-	bool MoveUp();
-	bool MoveDown();
-	bool MoveLeft(std::vector<int>& blocks);
-	bool MoveRight(std::vector<int>& blocks);
-	bool MoveUp(std::vector<int>& blocks);
-	bool MoveDown(std::vector<int>& blocks);
-	int GetFreeBlock();
-	void AddFreeBlock(int tag);
-	bool InitBlocks();
-	Block* RandomNewBlock();
-	bool CombineBlocks(Block* b1, Block* b2);
-	void SetAnimation(bool ing);
 private:
 	const int BLOCK_NUMBER = 4;
-	float matrix_width;
-	float block_gap;
-	float block_width;
-	std::set<int> free_blocks;
-	bool is_animation;
 };
 
 #endif // __HELLOWORLD_SCENE_H__

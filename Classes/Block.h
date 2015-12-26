@@ -4,8 +4,8 @@
 class Block: public cocos2d::LayerColor
 {
 private:
-	int value;
-	int fake_value;
+	int _value;
+	int _fake_value;
 public:
 	Block(int value);
 	~Block();

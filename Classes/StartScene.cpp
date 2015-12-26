@@ -3,12 +3,12 @@
 #include <algorithm>
 #include <cstdlib>
 #include "Toast.h"
+#include "BlockManager.h"
 
 USING_NS_CC;
 
 StartScene::StartScene()
 {
-	is_animation = false;
 }
 
 Scene* StartScene::createScene()
@@ -36,8 +36,27 @@ bool StartScene::init()
         return false;
     }
 
-	InitBlocks();
+	auto director = Director::getInstance();
+	auto sz = director->getVisibleSize();
 
+	auto matrix_width = std::min(sz.width, sz.height);
+	auto bm = BlockManager::create(matrix_width, matrix_width, BLOCK_NUMBER);
+	if (bm == nullptr)
+	{
+		return false;
+	}
+
+	bm->setAnchorPoint(Point::ANCHOR_BOTTOM_LEFT);
+	if (sz.width > sz.height)
+	{
+		bm->setPosition(sz.width - sz.height, 0);
+	}
+	else
+	{
+		bm->setPosition(0, 0);
+	}
+
+	addChild(bm, 1, "block_manager");
 	// 添加键盘监听器
 	auto keyListener = EventListenerKeyboard::create();
 	keyListener->onKeyPressed = CC_CALLBACK_2(StartScene::HandleKeyPressed, this);
@@ -68,749 +87,72 @@ bool StartScene::init()
 	return true;
 }
 
-void StartScene::HandleProcess(const std::string& direction)
-{
-	bool result = false;
-	if (direction == "left")
-	{
-		result = MoveLeft();
-	}
-	else if (direction == "right")
-	{
-		result = MoveRight();
-	}
-	else if (direction == "down")
-	{
-		result = MoveDown();
-	}
-	else if (direction == "up")
-	{
-		result = MoveUp();
-	}
-
-	std::vector<int> blocks;
-	for (int i = 0; i < BLOCK_NUMBER*BLOCK_NUMBER; ++i)
-	{
-		auto child = getChildByTag<Block*>(i);
-		int value = child->getValue();
-		blocks.push_back(value);
-	}
-
-	bool is_win = false;
-	for (auto it : blocks)
-	{
-		if (it >= 2048)
-		{
-			is_win = true;
-			PacToast::toast(this, "you win", 1.0f);
-			break;
-		}
-	}
-
-	if (result)
-	{
-		auto b = RandomNewBlock();
-		if (b != nullptr)
-		{
-			// check over
-			blocks[b->getTag()] = b->getValue();
-			if (free_blocks.empty() && !MoveLeft(blocks) && !MoveRight(blocks) && !MoveDown(blocks) && !MoveUp(blocks))
-			{
-				if (!is_win)
-				{
-					PacToast::toast(this, "you lose", 1.0f);
-				}
-			}
-		}
-		else
-		{
-			PacToast::toast(this, "something error", 1.0f);
-		}
-	}
-	else if (free_blocks.empty() && !is_win)
-	{
-		if (!MoveLeft(blocks) && !MoveRight(blocks) && !MoveDown(blocks) && !MoveUp(blocks))
-		{
-			PacToast::toast(this, "you lose", 1.0f);
-		}
-	}
-}
-
 void StartScene::HandleTouch(cocos2d::Touch* touch, cocos2d::Event* event)
 {
-	if (is_animation)
-	{
-		log("is_animation ...");
-		return;
-	}
 	Vec2 now_pt = touch->getLocation();
 	Vec2 prev_pt = touch->getStartLocation();
 	log("sprite end... (%f, %f) -> (%f, %f)", prev_pt.x, prev_pt.y, now_pt.x, now_pt.y);
 	auto x_axis = now_pt.x - prev_pt.x;
 	auto y_axis = now_pt.y - prev_pt.y;
+	auto bm = getChildByName<BlockManager*>("block_manager");
+	if (bm == nullptr)
+	{
+		return;
+	}
+
+	auto block_gap = bm->getBlockGap();
 	if (std::abs(x_axis) >= std::abs(y_axis))
 	{
 		if (x_axis <= -block_gap)	// 左
 		{
-			HandleProcess("left");
+			bm->handleAction("left");
 		}
 		else if (x_axis >= block_gap)
 		{
-			HandleProcess("right");
+			bm->handleAction("right");
 		}
 	}
 	else
 	{
 		if (y_axis <= -block_gap)	// 下
 		{
-			HandleProcess("down");
+			bm->handleAction("down");
 		}
 		else if (y_axis >= block_gap)
 		{
-			HandleProcess("up");
+			bm->handleAction("up");
 		}
 	}
 }
 
 void StartScene::HandleKeyPressed(EventKeyboard::KeyCode keyCode, Event* event)
 {
-	if (is_animation)
+	log("Key %d pressed.", (int)keyCode);
+
+	auto bm = getChildByName<BlockManager*>("block_manager");
+	if (bm == nullptr)
 	{
-		log("is_animation ...");
 		return;
 	}
-	log("Key %d pressed.", (int)keyCode);
 
 	if (keyCode == EventKeyboard::KeyCode::KEY_LEFT_ARROW)
 	{
-		HandleProcess("left");
+		bm->handleAction("left");
 	}
 	else if (keyCode == EventKeyboard::KeyCode::KEY_RIGHT_ARROW)
 	{
-		HandleProcess("right");
+		bm->handleAction("right");
 	}
 	else if (keyCode == EventKeyboard::KeyCode::KEY_UP_ARROW)
 	{
-		HandleProcess("up");
+		bm->handleAction("up");
 	}
 	else if (keyCode == EventKeyboard::KeyCode::KEY_DOWN_ARROW)
 	{
-		HandleProcess("down");
+		bm->handleAction("down");
 	}
 	else
 	{
 		log("usage: left, right, up, down");
 	}
-}
-
-bool StartScene::MoveLeft()
-{
-	log("left");
-	bool success = false;
-	for (int y = 0; y < BLOCK_NUMBER; ++y)
-	{
-		int left = -1;
-		for (int x = 1; x < BLOCK_NUMBER; ++x)
-		{
-			auto curr = getChildByTag<Block*>(x + y*BLOCK_NUMBER);
-			int curr_value = curr->getValue();
-			if (curr_value <= 0)
-			{
-				continue;
-			}
-			int left_prev = left;
-			for (int i = x - 1; i > left; --i)
-			{
-				auto tmp = getChildByTag<Block*>(i + y*BLOCK_NUMBER);
-				int tmp_value = tmp->getValue();
-				if (tmp_value <= 0)
-				{
-					continue;
-				}
-				else if (tmp_value == curr_value)	// 合并
-				{
-					CombineBlocks(curr, tmp);
-					left = i;
-					success = true;
-					break;
-				}
-				else
-				{
-					if (i + 1 == x)
-					{
-						left = i;
-						break;
-					}
-					else
-					{
-						auto tmp = getChildByTag<Block*>(i + 1 + y*BLOCK_NUMBER);
-						CombineBlocks(curr, tmp);
-						left = i;
-						success = true;
-						break;
-					}
-				}
-			}
-
-			if (left == left_prev && left + 1 != x)	// 未移动设置
-			{
-				auto tmp = getChildByTag<Block*>(left + 1 + y*BLOCK_NUMBER);
-				CombineBlocks(curr, tmp);
-				success = true;
-			}
-		}
-	}
-	return success;
-}
-
-bool StartScene::MoveLeft(std::vector<int>& blocks)
-{
-	log("test left");
-	bool success = false;
-	for (int y = 0; y < BLOCK_NUMBER; ++y)
-	{
-		int left = -1;
-		for (int x = 1; x < BLOCK_NUMBER; ++x)
-		{
-			int curr_tag = x + y*BLOCK_NUMBER;
-			int curr_value = blocks[curr_tag];
-			if (curr_value <= 0)
-			{
-				continue;
-			}
-			int left_prev = left;
-			for (int i = x - 1; i > left; --i)
-			{
-				int tmp_tag = i + y*BLOCK_NUMBER;
-				int tmp_value = blocks[tmp_tag];
-				if (tmp_value <= 0)
-				{
-					continue;
-				}
-				else if (tmp_value == curr_value)	// 合并
-				{
-					blocks[curr_tag] = 0;
-					blocks[tmp_tag] = curr_value + tmp_value;
-					left = i;
-					success = true;
-					break;
-				}
-				else
-				{
-					if (i + 1 == x)		// 相邻未移动
-					{
-						left = i;
-						break;
-					}
-					else
-					{
-						int tmp_tag = i + 1 + y*BLOCK_NUMBER;
-						int tmp_value = blocks[tmp_tag];
-						blocks[curr_tag] = 0;
-						blocks[tmp_tag] = curr_value + tmp_value;
-						left = i;
-						success = true;
-						break;
-					}
-				}
-			}
-
-			if (left == left_prev && left + 1 != x)	// 未移动, 全部是free
-			{
-				int tmp_tag = left + 1 + y*BLOCK_NUMBER;
-				int tmp_value = blocks[tmp_tag];
-				blocks[curr_tag] = 0;
-				blocks[tmp_tag] = curr_value + tmp_value;
-				success = true;
-			}
-		}
-	}
-	return success;
-}
-
-bool StartScene::MoveRight()
-{
-	log("right");
-	bool success = false;
-	for (int y = 0; y < BLOCK_NUMBER; ++y)
-	{
-		int right = BLOCK_NUMBER;
-		for (int x = BLOCK_NUMBER - 2; x >= 0; --x)
-		{
-			auto curr = getChildByTag<Block*>(x + y*BLOCK_NUMBER);
-			int curr_value = curr->getValue();
-			if (curr_value <= 0)
-			{
-				continue;
-			}
-			int right_prev = right;
-			for (int i = x + 1; i < right; ++i)
-			{
-				auto tmp = getChildByTag<Block*>(i + y*BLOCK_NUMBER);
-				int tmp_value = tmp->getValue();
-				if (tmp_value <= 0)
-				{
-					continue;
-				}
-				else if (tmp_value == curr_value)	// 合并
-				{
-					CombineBlocks(curr, tmp);
-					right = i;
-					success = true;
-					break;
-				}
-				else
-				{
-					if (i - 1 == x)		// 相邻
-					{
-						right = i;
-						break;
-					}
-					else
-					{
-						auto tmp = getChildByTag<Block*>(i - 1 + y*BLOCK_NUMBER);
-						CombineBlocks(curr, tmp);
-						right = i;
-						success = true;
-						break;
-					}
-				}
-			}
-
-			if (right == right_prev && right - 1 != x)	// 未移动设置
-			{
-				auto tmp = getChildByTag<Block*>(right - 1 + y*BLOCK_NUMBER);
-				CombineBlocks(curr, tmp);
-				success = true;
-			}
-		}
-	}
-	return success;
-}
-
-bool StartScene::MoveRight(std::vector<int>& blocks)
-{
-	log("test right");
-	bool success = false;
-	for (int y = 0; y < BLOCK_NUMBER; ++y)
-	{
-		int right = BLOCK_NUMBER;
-		for (int x = BLOCK_NUMBER - 2; x >= 0; --x)
-		{
-			int curr_tag = x + y*BLOCK_NUMBER;
-			int curr_value = blocks[curr_tag];
-			if (curr_value <= 0)
-			{
-				continue;
-			}
-			int right_prev = right;
-			for (int i = x + 1; i < right; ++i)
-			{
-				int tmp_tag = i + y*BLOCK_NUMBER;
-				int tmp_value = blocks[tmp_tag];
-				if (tmp_value <= 0)
-				{
-					continue;
-				}
-				else if (tmp_value == curr_value)	// 合并
-				{
-					blocks[curr_tag] = 0;
-					blocks[tmp_tag] = curr_value + tmp_value;
-					right = i;
-					success = true;
-					break;
-				}
-				else
-				{
-					if (i - 1 == x)		// 相邻未移动
-					{
-						right = i;
-						break;
-					}
-					else
-					{
-						int tmp_tag = i - 1 + y*BLOCK_NUMBER;
-						int tmp_value = blocks[tmp_tag];
-						blocks[curr_tag] = 0;
-						blocks[tmp_tag] = curr_value + tmp_value;
-						right = i;
-						success = true;
-						break;
-					}
-				}
-			}
-
-			if (right == right_prev && right - 1 != x)	// 未移动设置
-			{
-				int tmp_tag = right - 1 + y*BLOCK_NUMBER;
-				int tmp_value = blocks[tmp_tag];
-				blocks[curr_tag] = 0;
-				blocks[tmp_tag] = curr_value + tmp_value;
-				success = true;
-			}
-		}
-	}
-	return success;
-}
-
-bool StartScene::MoveUp()
-{
-	log("up");
-	bool success = false;
-	for (int x = 0; x < BLOCK_NUMBER; ++x)
-	{
-		int up = BLOCK_NUMBER;
-		for (int y = BLOCK_NUMBER - 2; y >= 0; --y)
-		{
-			auto curr = getChildByTag<Block*>(x + y*BLOCK_NUMBER);
-			int curr_value = curr->getValue();
-			if (curr_value <= 0)
-			{
-				continue;
-			}
-			int up_prev = up;
-			for (int i = y + 1; i < up; ++i)
-			{
-				auto tmp = getChildByTag<Block*>(x + i*BLOCK_NUMBER);
-				int tmp_value = tmp->getValue();
-				if (tmp_value <= 0)
-				{
-					continue;
-				}
-				else if (tmp_value == curr_value)	// 合并
-				{
-					CombineBlocks(curr, tmp);
-					up = i;
-					success = true;
-					break;
-				}
-				else
-				{
-					if (i - 1 == y)
-					{
-						up = i;
-						break;
-					}
-					else
-					{
-						auto tmp = getChildByTag<Block*>(x + (i - 1)*BLOCK_NUMBER);
-						CombineBlocks(curr, tmp);
-						up = i;
-						success = true;
-						break;
-					}
-				}
-			}
-
-			if (up == up_prev && up - 1 != y)	// 未移动设置
-			{
-				auto tmp = getChildByTag<Block*>(x + (up-1)*BLOCK_NUMBER);
-				CombineBlocks(curr, tmp);
-				success = true;
-			}
-		}
-	}
-	return success;
-}
-
-bool StartScene::MoveUp(std::vector<int>& blocks)
-{
-	log("test up");
-	bool success = false;
-	for (int x = 0; x < BLOCK_NUMBER; ++x)
-	{
-		int up = BLOCK_NUMBER;
-		for (int y = BLOCK_NUMBER - 2; y >= 0; --y)
-		{
-			int curr_tag = x + y*BLOCK_NUMBER;
-			int curr_value = blocks[curr_tag];
-			if (curr_value <= 0)
-			{
-				continue;
-			}
-			int up_prev = up;
-			for (int i = y + 1; i < up; ++i)
-			{
-				int tmp_tag = x + i*BLOCK_NUMBER;
-				int tmp_value = blocks[tmp_tag];
-				if (tmp_value <= 0)
-				{
-					continue;
-				}
-				else if (tmp_value == curr_value)	// 合并
-				{
-					blocks[curr_tag] = 0;
-					blocks[tmp_tag] = curr_value + tmp_value;
-					up = i;
-					success = true;
-					break;
-				}
-				else
-				{
-					if (i - 1 == y)		// 相邻未移动
-					{
-						up = i;
-						break;
-					}
-					else
-					{
-						int tmp_tag = x + (i - 1)*BLOCK_NUMBER;
-						int tmp_value = blocks[tmp_tag];
-						blocks[curr_tag] = 0;
-						blocks[tmp_tag] = curr_value + tmp_value;
-						up = i;
-						success = true;
-						break;
-					}
-				}
-			}
-
-			if (up == up_prev && up - 1 != y)	// 未移动设置
-			{
-				int tmp_tag = x + (up - 1)*BLOCK_NUMBER;
-				int tmp_value = blocks[tmp_tag];
-				blocks[curr_tag] = 0;
-				blocks[tmp_tag] = curr_value + tmp_value;
-				success = true;
-			}
-		}
-	}
-	return success;
-}
-
-bool StartScene::MoveDown()
-{
-	log("down");
-	bool success = false;
-	for (int x = 0; x < BLOCK_NUMBER; ++x)
-	{
-		int down = -1;
-		for (int y = 1; y < BLOCK_NUMBER; ++y)
-		{
-			auto curr = getChildByTag<Block*>(x + y*BLOCK_NUMBER);
-			int curr_value = curr->getValue();
-			if (curr_value <= 0)
-			{
-				continue;
-			}
-			int down_prev = down;
-			for (int i = y - 1; i > down; --i)
-			{
-				auto tmp = getChildByTag<Block*>(x + i*BLOCK_NUMBER);
-				int tmp_value = tmp->getValue();
-				if (tmp_value <= 0)
-				{
-					continue;
-				}
-				else if (tmp_value == curr_value)	// 合并
-				{
-					CombineBlocks(curr, tmp);
-					down = i;
-					success = true;
-					break;
-				}
-				else
-				{
-					if (i + 1 == y)
-					{
-						down = i;
-						break;
-					}
-					else
-					{
-						auto tmp = getChildByTag<Block*>(x + (i + 1)*BLOCK_NUMBER);
-						CombineBlocks(curr, tmp);
-						down = i;
-						success = true;
-						break;
-					}
-				}
-			}
-
-			if (down == down_prev && down + 1 != y)	// 未移动设置
-			{
-				auto tmp = getChildByTag<Block*>(x + (down + 1)*BLOCK_NUMBER);
-				CombineBlocks(curr, tmp);
-				success = true;
-			}
-		}
-	}
-	return success;
-}
-
-bool StartScene::MoveDown(std::vector<int>& blocks)
-{
-	log("test down");
-	bool success = false;
-	for (int x = 0; x < BLOCK_NUMBER; ++x)
-	{
-		int down = -1;
-		for (int y = 1; y < BLOCK_NUMBER; ++y)
-		{
-			int curr_tag = x + y*BLOCK_NUMBER;
-			int curr_value = blocks[curr_tag];
-			if (curr_value <= 0)
-			{
-				continue;
-			}
-			int down_prev = down;
-			for (int i = y - 1; i > down; --i)
-			{
-				int tmp_tag = x + i*BLOCK_NUMBER;
-				int tmp_value = blocks[tmp_tag];
-				if (tmp_value <= 0)
-				{
-					continue;
-				}
-				else if (tmp_value == curr_value)	// 合并
-				{
-					blocks[curr_tag] = 0;
-					blocks[tmp_tag] = curr_value + tmp_value;
-					down = i;
-					success = true;
-					break;
-				}
-				else
-				{
-					if (i + 1 == y)		// 相邻未移动
-					{
-						down = i;
-						break;
-					}
-					else
-					{
-						int tmp_tag = x + (i + 1)*BLOCK_NUMBER;
-						int tmp_value = blocks[tmp_tag];
-						blocks[curr_tag] = 0;
-						blocks[tmp_tag] = curr_value + tmp_value;
-						down = i;
-						success = true;
-						break;
-					}
-				}
-			}
-
-			if (down == down_prev && down + 1 != y)	// 未移动设置
-			{
-				int tmp_tag = x + (down + 1)*BLOCK_NUMBER;
-				int tmp_value = blocks[tmp_tag];
-				blocks[curr_tag] = 0;
-				blocks[tmp_tag] = curr_value + tmp_value;
-				success = true;
-			}
-		}
-	}
-	return success;
-}
-
-int StartScene::GetFreeBlock()
-{
-	assert(!free_blocks.empty());
-
-	int index = rand() % free_blocks.size();
-	auto it = free_blocks.begin();
-	while (index-- > 0)
-	{
-		++it;
-	}
-	int tag = *it;
-	free_blocks.erase(it);
-	return tag;
-}
-
-void StartScene::AddFreeBlock(int tag)
-{
-	free_blocks.insert(tag);
-}
-
-bool StartScene::InitBlocks()
-{
-	srand(time(NULL));
-	for (int i = 0; i < BLOCK_NUMBER*BLOCK_NUMBER; ++i)
-	{
-		free_blocks.insert(i);
-	}
-
-	auto director = Director::getInstance();
-	auto sz = director->getVisibleSize();
-
-	matrix_width = std::min(sz.width, sz.height);
-	block_gap = float(matrix_width) / (15*BLOCK_NUMBER+2);
-	block_width = block_gap * 14;
-
-	float diff_x = block_gap / 2;
-	float diff_y = block_gap / 2;
-	if (sz.width > sz.height)
-	{
-		diff_x += sz.width - sz.height;
-	}
-
-	int block1 = GetFreeBlock();
-	int block2 = GetFreeBlock();
-
-	for (int x = 0; x < BLOCK_NUMBER; ++x)
-	{
-		int _x = x * (block_gap + block_width) + block_gap + block_width / 2 + diff_x;
-		for (int y = 0; y < BLOCK_NUMBER; ++y)
-		{
-			int tag = x + BLOCK_NUMBER*y;
-			int value = 0;
-			if (tag == block1 || tag == block2)
-			{
-				value = 2;
-			}
-			auto b = Block::create(value, block_width, block_width);
-			int _y = y * (block_gap + block_width) + block_gap + block_width / 2 + diff_y;
-			b->setPosition(_x, _y);
-			addChild(b, 1, tag);
-			log("tag%d", tag);
-		}
-	}
-	return true;
-}
-
-Block* StartScene::RandomNewBlock()
-{
-	if (free_blocks.empty())
-	{
-		log("no free block exist, maybe win");
-		return nullptr;
-	}
-	int tag = GetFreeBlock();
-	auto b = getChildByTag<Block*>(tag);
-	auto tmp = b->clone();
-	addChild(tmp, 99);
-	auto value = (rand() % 100 <= 10) ? 4 : 2;
-	b->setFakeValue(value);
-	tmp->setValue(value);
-	tmp->setTag(100 + tag);
-	tmp->setScale(0.2f);
-	is_animation = true;
-	auto zoom_in = CCScaleTo::create(0.2f, 1.0f);
-	auto action_callback = CallFuncN::create([this, tmp, b, value](Node* node) {
-		tmp->removeFromParentAndCleanup(true);
-		b->setValue(value);
-		is_animation = false;
-	});
-	auto seq = Sequence::create(zoom_in, action_callback, nullptr);
-	tmp->runAction(seq);
-	return b;
-}
-
-bool StartScene::CombineBlocks(Block* b1, Block* b2)
-{
-	int tag1 = b1->getTag();
-	int tag2 = b2->getTag();
-	int value1 = b1->getValue();
-	int value2 = b2->getValue();
-	AddFreeBlock(tag1);
-	free_blocks.erase(tag2);
-	b1->setValue(0);
-	b2->setValue(value1 + value2);
-	return true;
-}
-
-void StartScene::SetAnimation(bool ing)
-{
-	is_animation = ing;
 }

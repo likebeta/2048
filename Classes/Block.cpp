@@ -6,8 +6,8 @@ USING_NS_CC;
 
 Block::Block(int value)
 {
-	this->value = value;
-	this->fake_value = value;
+	_value = value;
+	_fake_value = value;
 	_ignoreAnchorPointForPosition = false;
 }
 
@@ -81,13 +81,13 @@ Color4B Block::getTextColorByValue(int value)
 
 void Block::setValue(int value)
 {
-	if (value != this->value)
+	if (value != _value)
 	{
-		this->value = value;
-		this->fake_value = value;
+		_value = value;
+		_fake_value = value;
 		auto bkColor = getBkColorByValue(value);
-		this->setColor(Color3B(bkColor));
-		this->setOpacity(bkColor.a);
+		setColor(Color3B(bkColor));
+		setOpacity(bkColor.a);
 		auto child = getChildByName<Label*>("label");
 		if (value > 0)
 		{
@@ -104,12 +104,12 @@ void Block::setValue(int value)
 
 void Block::setFakeValue(int value)
 {
-	fake_value = value;
+	_fake_value = value;
 }
 
 int Block::getValue()
 {
-	return fake_value;
+	return _fake_value;
 }
 
 bool Block::initWithValue(int value, int width, int height)
@@ -144,7 +144,7 @@ int Block::getFontSizeByValue(int value)
 
 Block* Block::clone()
 {
-	auto b = create(value, _contentSize.width, _contentSize.height);
+	auto b = create(_value, _contentSize.width, _contentSize.height);
 	if (b != nullptr)
 	{
 		auto pos = getPosition();
